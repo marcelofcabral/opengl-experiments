@@ -26,3 +26,6 @@
 Thumbs.db
 
 x64
+
+stb_image.h
+stb_image_impl.cpp

@@ -1,10 +1,11 @@
 #ifndef SHADER_H
 #define SHADER_H
-  
+
 #include <string>
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include <vector>
 
 #include <glad/glad.h>
 
@@ -113,6 +114,11 @@ public:
     void set_float(const std::string &name, const float value) const
     {
         glUniform1f(glGetUniformLocation(id, name.c_str()), value);
+    }
+
+    void set_vec3_f(const std::string &name, const std::vector<float> &value) const
+    {
+        glUniform3fv(glGetUniformLocation(id, name.c_str()), 1, value.data());
     }
 };
 

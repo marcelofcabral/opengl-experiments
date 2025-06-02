@@ -1,26 +1,15 @@
 #ifndef UTILS_H
 #define UTILS_H
 
-#include <fstream>
-#include <sstream>
 #include <string>
+#include <GLFW/glfw3.h>
 
-inline std::string read_file(const std::string& filename)
-{
-    std::ifstream file(filename);
-    
-    if (!file.is_open()) return "";
+unsigned char* load_image(const std::string& filepath, int& width, int& height, int& n_channels);
 
-    std::stringstream stream;
-    stream << file.rdbuf();
-    file.close();
-    
-    return stream.str();
-}
+void process_input(GLFWwindow* window, GLuint shader_program, float& curr_face_alpha);
 
-inline float clamp(const float value, const float min, const float max)
-{
-    return value < min ? min : value > max ? max : value;
-}
+std::string read_file(const std::string& filename);
+
+float clamp(const float value, const float min, const float max);
 
 #endif // UTILS_H
