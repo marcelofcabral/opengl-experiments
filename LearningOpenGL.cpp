@@ -4,19 +4,23 @@
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
 
 #include "stb_image.h"
 
 #include "./utils.h"
 #include "shaders/Shader.h"
+#include "Camera.h"
 
+float delta_time = 0.0f;
+float last_frame = 0.0f;
 
 enum class shader_type : uint8_t
 {
     vertex,
     fragment
 };
+
+Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
 
 namespace
 {
@@ -53,25 +57,70 @@ int main(int argc, char* argv[])
 
     glViewport(0, 0, 800, 600);
 
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-    /*
+    glfwSetCursorPosCallback(window, mouse_callback);
+    glfwSetScrollCallback(window, scroll_callback);
+    
+    
     float vertices[] = {
-        // positions        // colors
-        0.0f,  0.5f, 0.0f,  1.0f, 0.0f, 0.0f,
-        0.5f, -0.5f, 0.0f,  0.0f, 1.0f, 0.0f, 
-        -0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f,
-    };
-    */
+        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+         0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
 
-    
-    float vertices[] = {
-        // positions          // colors           // texture coords
-        0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,   // top right
-        0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f,   // bottom right
-       -0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f,   // bottom left
-       -0.5f,  0.5f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f    // top left 
-   };
-    
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+
+        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+        -0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+
+         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+         0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+         0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+         0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+         0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
+         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+
+        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f
+    };
+
+    glm::vec3 cube_positions[] = {
+        glm::vec3( 0.0f,  0.0f,  0.0f), 
+        glm::vec3( 2.0f,  5.0f, -15.0f), 
+        glm::vec3(-1.5f, -2.2f, -2.5f),  
+        glm::vec3(-3.8f, -2.0f, -12.3f),  
+        glm::vec3( 2.4f, -0.4f, -3.5f),  
+        glm::vec3(-1.7f,  3.0f, -7.5f),  
+        glm::vec3( 1.3f, -2.0f, -2.5f),  
+        glm::vec3( 1.5f,  2.0f, -2.5f), 
+        glm::vec3( 1.5f,  0.2f, -1.5f), 
+        glm::vec3(-1.3f,  1.0f, -1.5f)  
+    };
+
     unsigned int indices[] = {  // note that we start from 0!
         0, 1, 3,  // first Triangle
         1, 2, 3   // second Triangle
@@ -152,16 +201,18 @@ int main(int argc, char* argv[])
     
     // bind vertex attribute 0 to the previously bound vbo, telling OpenGL how to interpret vertex data
     // vertex position
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), static_cast<void*>(nullptr));
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), static_cast<void*>(nullptr));
     glEnableVertexAttribArray(0);
-
+    
+    /*
     // vertex color
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), reinterpret_cast<void*>(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
-
+    */
+    
     // vertex texture coordinate
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), reinterpret_cast<void*>(6 * sizeof(float)));
-    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), reinterpret_cast<void*>(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
     
     // note that this is allowed, the call to glVertexAttribPointer registered VBO as the vertex attribute's bound vertex buffer object so afterwards we can safely unbind
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -181,14 +232,19 @@ int main(int argc, char* argv[])
     shader.set_int("container_texture", 0);
     shader.set_int("face_texture", 1);
 
-    float face_alpha = 0.f;
+    glEnable(GL_DEPTH_TEST);
     
     while (!glfwWindowShouldClose(window))
     {
-        process_input(window, shader.id, face_alpha);
+        float current_frame = static_cast<float>(glfwGetTime());
+
+        delta_time = current_frame - last_frame;
+        last_frame = current_frame;
         
-        glClearColor(0.f, 0.f, 0.f, 1.f);
-        glClear(GL_COLOR_BUFFER_BIT);
+        process_input(window);
+        
+        glClearColor(0.5f, 0.867f, 0.949f, 1.f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, container_texture);
@@ -199,29 +255,58 @@ int main(int argc, char* argv[])
         shader.use();
         glBindVertexArray(vao);
         
-        // glm operations
-        glm::mat4 trans_right = glm::mat4(1.0f);
+        // glm matrix operations
+        // glm::vec3 camera_pos = glm::vec3(0.0f, 0.0f, 3.0f);
+        // glm::vec3 camera_target = glm::vec3(0.0f, 0.0f, 0.0f);
 
-        // operations are done from right to left. So the first operation is scaling, then rotation
-        // rotate around z-axis, which is the axis orthogonal to the screen plane
-        // trans_right = glm::rotate(trans_right, glm::radians(90.f), glm::vec3(0.0f, 0.0f, 1.0f));
-        
-        // trans_rightlate to the bottom right corner of the viewport
-        trans_right = glm::translate(trans_right, glm::vec3(0.5f, -0.5f, 0.f));
-        
-        // rotate around the z-axis, the rotation will be updated over time
-        trans_right = glm::rotate(trans_right, glm::radians((float)glfwGetTime() * 5.f), glm::vec3(0.f, 0.f, 1.f));
-    
-        // make the box twice as small
-        trans_right = glm::scale(trans_right, glm::vec3(0.5f, 0.5f, 0.5f));
+        // camera z-axis
+        // glm::vec3 camera_direction = camera_pos - camera_target; // inverse so the z-axis of the camera points towards z+
 
-        const GLint transform_location = glGetUniformLocation(shader.id, "transform");
-    
-        glUniformMatrix4fv(transform_location, 1, GL_FALSE, glm::value_ptr(trans_right));
-        // glDrawArrays(GL_TRIANGLES, 0, 3);
-        
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+        // obtaining the right (x)-axis
+        // glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
+        // glm::vec3 camera_right = glm::normalize(glm::cross(up, camera_direction));
 
+        // obtaining the up (y)-axis
+        // glm::vec3 camera_up = glm::normalize(glm::cross(camera_direction, camera_right));
+        
+        // glm::mat4 view_matrix = glm::mat4(1.f);
+
+        // lookAt does the process of getting the up, right and direction vectors for us and creates a LookAt matrix (check lecture for info)
+        // glm::mat4 view_matrix = glm::lookAt(camera_pos, camera_target, up);
+
+        // making the camera 'go around in a circle' around the scene
+        // const float radius = 10.f;
+        // float cam_x = sin(static_cast<float>(glfwGetTime())) * radius;
+        // float cam_z = cos(static_cast<float>(glfwGetTime())) * radius;
+        // glm::mat4 view_matrix = glm::lookAt(camera_position, camera_position + camera_front, camera_up);
+        
+        // view_matrix = glm::translate(view_matrix, glm::vec3(0.f, 0.f, -3.f));
+        glm::mat4 projection_matrix = glm::perspective(glm::radians(camera.zoom), 800.f / 600.f, 0.1f, 100.f);
+        shader.set_mat4("projection_matrix", projection_matrix);
+
+        // glm::mat4 view_matrix = camera.get_view_matrix();
+        glm::mat4 view_matrix = my_look_at(glm::vec3(camera.position.x, camera.position.y, camera.position.z), camera.position + camera.front, glm::vec3(0.0f, 1.0f, 0.0f));
+        shader.set_mat4("view_matrix", view_matrix);
+        
+        for (unsigned int i = 0; i < 10; i++)
+        {
+            glm::mat4 model_matrix = glm::mat4(1.f);
+            model_matrix = glm::translate(model_matrix, cube_positions[i]);
+            
+            float angle = 20.f * static_cast<float>(i);
+
+            if (i % 2 != 0)
+            {
+                angle = (float)glfwGetTime() * 25.f;
+            }
+            
+            model_matrix = glm::rotate(model_matrix, glm::radians(angle), glm::vec3(1.f, 0.f, 0.5f));
+            shader.set_mat4("model_matrix", model_matrix);
+
+            glDrawArrays(GL_TRIANGLES, 0, 36);
+        }
+        
+        /*
         glm::mat4 trans_left = glm::mat4(1.0f);
 
         trans_left = glm::translate(trans_left, glm::vec3(-0.5f, 0.5f, 0.f));
@@ -229,9 +314,9 @@ int main(int argc, char* argv[])
         trans_left = glm::scale(trans_left, glm::vec3(sin((float)glfwGetTime()) * 0.5f, sin((float)glfwGetTime()) * 0.5f, 1.f));
         
         glUniformMatrix4fv(transform_location, 1, GL_FALSE, glm::value_ptr(trans_left));
-
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
         
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+            */
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
